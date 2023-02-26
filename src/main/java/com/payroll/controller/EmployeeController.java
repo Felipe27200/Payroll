@@ -1,7 +1,10 @@
 package com.payroll.controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +17,15 @@ import com.payroll.repository.EmployeeRepository;
 import com.payroll.entity.Employee;
 import com.payroll.errors.EmployeeNotFoundException;
 
+/*
+ * +---------------+
+ * | STATIC HELPER |
+ * +---------------+
+ * 
+ * Se debe importar este recurso para poder
+ * construir estos links.
+ * */
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 /*
  * +---------------+
@@ -45,9 +57,32 @@ public class EmployeeController
 	}
 	
 	@GetMapping("/employees")
-	public List<Employee> all()
+	/*
+	 * +-----------------------------------------+
+	 * | ENCAPSULLATING COLLECTIONS OF RESOURCES |
+	 * +-----------------------------------------+
+	 * 
+	 * CollectionModel<> es un contenedor de HATEOAS,
+	 * su propósito es encapsular colecciones de recursos,
+	 * en lugar de un solo tipo de recursos como EntityModel<>,
+	 * con este contenedor también se pueden incluir enlaces.
+	 * */
+	public CollectionModel<EntityModel<Employee>> all()
 	{
-		return repository.findAll();
+		List<EntityModel<Employee>> employees = 
+			repository.findAll().stream()
+			.map(employee -> EntityModel.of(employee,
+				linkTo(
+					methodOn(EmployeeController.class).one(employee.getId())
+				).withSelfRel(),
+				linkTo(
+					methodOn(EmployeeController.class).all()
+				).withRel("employees")
+			))
+			.collect(Collectors.toList());
+		
+		return CollectionModel.of(employees,
+			linkTo(methodOn(EmployeeController.class).all()).withSelfRel());
 	}
 	
 	@PostMapping("/employees")
@@ -63,10 +98,9 @@ public class EmployeeController
 	 * que incluye no solo los datos, sino también
 	 * una colección de links.
 	 * */
-	public Employee one(@PathVariable Long id)
+	public EntityModel<Employee> one(@PathVariable Long id)
 	{
-//		Employee employee = repository.findById(id)
-		return repository.findById(id)
+		Employee employee = repository.findById(id)
 				/* 
 				 * +-------------------+
 				 * | HANDLE EXCEPTIONS |
@@ -81,17 +115,29 @@ public class EmployeeController
 				 */
 			      .orElseThrow(() -> new EmployeeNotFoundException(id));
 		
-//		return EntityModel.of(employee,
-//			/*
-//			 * Pide al Spring HATEOAS que construya un link para el método
-//			 * one() de EmployeeController y lo marque como un enlace propio.
-//			 * */
-//			linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
-//			/*
-//			 * Pide a Spring HATEOAS que construya un link para el conglomerado
-//			 * raíz (root), all(), y lo llame "employees"
-//			 * */
-//			linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
+		/*
+		 * +-----------------+
+		 * | HAL - MEDIATYPE |
+		 * +-----------------+
+		 * 
+		 * Retorna todo en un mediatype conocido como HAL
+		 * que no solo códifica los datos sino que también lo
+		 * hace con los controles hypermedia, alertando a los 
+		 * consumidores sobre las otras partes de la API a las
+		 * que pueden navegar.
+		 * */
+		return EntityModel.of(employee,
+			/*
+			 * Pide al Spring HATEOAS que construya un link para el método
+			 * one() de EmployeeController y lo marque como un enlace propio.
+			 * */
+			linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
+			/*
+			 * Pide a Spring HATEOAS que construya un link para el conglomerado
+			 * raíz (root), all(), y lo llame "employees", indica la ruta raíz
+			 * para el controlador, apuntando al método all() del mismo.
+			 * */
+			linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
 	}
 	
 	@PutMapping("/employees/{id}")
