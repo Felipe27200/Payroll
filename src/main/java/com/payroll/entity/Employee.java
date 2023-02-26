@@ -16,6 +16,11 @@ public class Employee {
 	private Long id;
 	private String name;
 	private String role;
+	
+	/*
+	 * The Default constructor is necessary
+	 * */
+	public Employee () { }
 
 	public Employee(String name, String role) {
 		this.name = name;
