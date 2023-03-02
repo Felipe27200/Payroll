@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.payroll.repository.EmployeeRepository;
 import com.payroll.entity.Employee;
 import com.payroll.errors.EmployeeNotFoundException;
+import com.payroll.model.EmployeeModelAssembler;
 
 /*
  * +---------------+
@@ -46,14 +47,20 @@ public class EmployeeController
 	 * | DEPENDENCY INJECTION |
 	 * +----------------------+
 	 * 
-	 * EmployeeRepository es inyecta por el
+	 * EmployeeRepository es inyectada por el
 	 * constructor dentro del controller.
 	 * */
 	private final EmployeeRepository repository;
+	private final EmployeeModelAssembler assembler;
 	
-	public EmployeeController(EmployeeRepository repository)
+	/*
+	 * Para sacar ventaja del ensamblador hay que 
+	 * inyectarlo en el constructor del controlador.
+	 * */
+	public EmployeeController(EmployeeRepository repository, EmployeeModelAssembler assembler)
 	{
 		this.repository = repository;
+		this.assembler = assembler;
 	}
 	
 	@GetMapping("/employees")
@@ -69,16 +76,12 @@ public class EmployeeController
 	 * */
 	public CollectionModel<EntityModel<Employee>> all()
 	{
-		List<EntityModel<Employee>> employees = 
-			repository.findAll().stream()
-			.map(employee -> EntityModel.of(employee,
-				linkTo(
-					methodOn(EmployeeController.class).one(employee.getId())
-				).withSelfRel(),
-				linkTo(
-					methodOn(EmployeeController.class).all()
-				).withRel("employees")
-			))
+		List<EntityModel<Employee>> employees = repository.findAll().stream()
+				/*
+				 * El assembler se encara de toda la creación del modelo
+				 * EntityModel<Employee>.
+				 * */
+			.map(assembler::toModel)
 			.collect(Collectors.toList());
 		
 		return CollectionModel.of(employees,
@@ -116,28 +119,15 @@ public class EmployeeController
 			      .orElseThrow(() -> new EmployeeNotFoundException(id));
 		
 		/*
-		 * +-----------------+
-		 * | HAL - MEDIATYPE |
-		 * +-----------------+
+		 * +-------------------+
+		 * | USE THE ASSEMBLER |
+		 * +-------------------+
 		 * 
-		 * Retorna todo en un mediatype conocido como HAL
-		 * que no solo códifica los datos sino que también lo
-		 * hace con los controles hypermedia, alertando a los 
-		 * consumidores sobre las otras partes de la API a las
-		 * que pueden navegar.
+		 * Se usa el método del ensamblador que hace 
+		 * lo mismo que el código que yacía en esta sección. 
 		 * */
-		return EntityModel.of(employee,
-			/*
-			 * Pide al Spring HATEOAS que construya un link para el método
-			 * one() de EmployeeController y lo marque como un enlace propio.
-			 * */
-			linkTo(methodOn(EmployeeController.class).one(id)).withSelfRel(),
-			/*
-			 * Pide a Spring HATEOAS que construya un link para el conglomerado
-			 * raíz (root), all(), y lo llame "employees", indica la ruta raíz
-			 * para el controlador, apuntando al método all() del mismo.
-			 * */
-			linkTo(methodOn(EmployeeController.class).all()).withRel("employees"));
+		return assembler.toModel(employee);
+
 	}
 	
 	@PutMapping("/employees/{id}")
