@@ -5,6 +5,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -89,9 +91,34 @@ public class EmployeeController
 	}
 	
 	@PostMapping("/employees")
-	public Employee newEmployee(@RequestBody Employee newEmployee)
+	/* +-------------------------+
+	 * | EMMIT A 201 HTTP STATUS |
+	 * +-------------------------+
+	 * 
+	 * ResponseEntity es usado para crear una 
+	 * HTTP 201 status message.
+	 * 
+	 * Este tipo de respuesta generalmente incluye un Location response header,
+	 * y se usará la URL derivada del self-related link del modelo.
+	 */
+	public ResponseEntity<?> newEmployee(@RequestBody Employee newEmployee)
 	{
-		return repository.save(newEmployee);
+		/*
+		 * +--------------------------------------+
+		 * | SAVING DATA AND WRAPPED TO ASSEMBLER |
+		 * +--------------------------------------+
+		 * 
+		 * Funciona de forma similar el almacenado, sólo que
+		 * el objeto resultante es envuelto usando EmployeeModelAssembler.
+		 * */
+		EntityModel<Employee> entityModel = assembler.toModel(repository.save(newEmployee));
+		
+		/*
+		 * Además, retorna la versíon basada en el modelos del objeto guardado.
+		 * */
+		return ResponseEntity
+				.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+				.body(entityModel);
 	}
 	
 	@GetMapping("/employees/{id}")
