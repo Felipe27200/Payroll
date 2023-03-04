@@ -114,7 +114,7 @@ public class EmployeeController
 		EntityModel<Employee> entityModel = assembler.toModel(repository.save(newEmployee));
 		
 		/*
-		 * Además, retorna la versíon basada en el modelos del objeto guardado.
+		 * Además, retorna la versión basada en los modelos del objeto guardado.
 		 * */
 		return ResponseEntity
 				.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
@@ -158,9 +158,9 @@ public class EmployeeController
 	}
 	
 	@PutMapping("/employees/{id}")
-	public Employee replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id)
+	public ResponseEntity<?> replaceEmployee(@RequestBody Employee newEmployee, @PathVariable Long id)
 	{
-		return repository.findById(id)
+		Employee updatedEmployee = repository.findById(id)
 			.map(employee -> {
 				employee.setName(newEmployee.getName());
 				employee.setRole(newEmployee.getRole());
@@ -172,11 +172,39 @@ public class EmployeeController
 				
 				return repository.save(newEmployee);
 			});
+		
+		/*
+		 * El objeto construido desde el save() es luego envuelto en el 
+		 * EmployeeModelAssembler usando un objeto EntityModel<Employee>.
+		 * */
+		EntityModel<Employee> entityModel = assembler.toModel(updatedEmployee);
+		
+		/*
+		 * Para obtener una respuesta HTTP más detallada que un 200 OK, 
+		 * se usa ResponseEntity de Spring MVC.
+		 * */
+		return ResponseEntity
+			/*
+			 * Usando el método getRequiredLink se puede recuperar el Link creado
+			 * por EmployeeModelAssembler con un SELF rel.
+			 * 
+			 * Este método retorna un Link que debe ser convertido en URI con 
+			 * el método toUri();
+			 * 
+			 * En el método created() podemos introducir la URI del recuroso.
+			 * */
+			.created(entityModel.getRequiredLink(IanaLinkRelations.SELF).toUri())
+			.body(entityModel);
 	}
 	
 	@DeleteMapping("/employees/{id}")
-	public void deleteEmployee(@PathVariable Long id)
+	public ResponseEntity<?> deleteEmployee(@PathVariable Long id)
 	{
 		repository.deleteById(id);
+		
+		/*
+		 * Retorna una respuesta HTTP 204 No Content
+		 * */
+		return ResponseEntity.noContent().build();
 	}
 }
