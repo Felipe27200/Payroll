@@ -36,6 +36,13 @@ public class Employee {
 	 * 
 	 * Getter and setter to imitate the 
 	 * functionality of old structure.
+	 * 
+	 * setName() -> gracias a él la API puede
+	 * recibir un atributo name en una petición
+	 * y desfragmentarlo para que se acople al
+	 * anterior funcionamiento, cuando solo tenía una
+	 * propieda name.
+	 * 
 	 * */
 	public String getName() {
 		return this.firstName + " " + this.lastName;
