@@ -7,7 +7,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.payroll.entity.Employee;
+import com.payroll.entity.Order;
+import com.payroll.entity.Status;
 import com.payroll.repository.EmployeeRepository;
+import com.payroll.repository.OrderRepository;
 
 
 @Configuration
@@ -23,12 +26,21 @@ public class LoadDatabase
 	/*
 	 * Solicitará una copia del EmployeeRepository
 	 * */
-	CommandLineRunner initDatabase(EmployeeRepository repository)
+	CommandLineRunner initDatabase(EmployeeRepository employeeRepository, OrderRepository orderRepository)
 	{
 		
 		return args -> {
-			log.info("Preloading: " + repository.save(new Employee("Bilbo", "Baggins", "burglar")));
-			log.info("Preloading: " + repository.save(new Employee("Frodo", "Baggins", "thief")));
+			log.info("Preloading: " + employeeRepository.save(new Employee("Bilbo", "Baggins", "burglar")));
+			log.info("Preloading: " + employeeRepository.save(new Employee("Frodo", "Baggins", "thief")));
+			
+			employeeRepository.findAll().forEach(employee -> log.info("Preloaded: " + employee));
+			
+			orderRepository.save(new Order("MacBook Pro", Status.COMPLETED));
+			orderRepository.save(new Order("iPhone", Status.IN_PROGRESS));
+			
+			orderRepository.findAll().forEach(order -> {
+				log.info("Preloaded" + order);
+			});
 		};
 	}
 }
